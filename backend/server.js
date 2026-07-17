@@ -1,20 +1,22 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const { MongoClient } = require("mongodb");
-const bodyparser = require("body-parser");
-const cors = require("cors");
+import express from "express";
+import dotenv from "dotenv";
+import { MongoClient } from "mongodb";
+import bodyparser from "body-parser";
+import cors from "cors";
 
+dotenv.config();
+
+console.log(process.env.MONGO_URI);
 // Connection URL
-const url = "mongodb://localhost:27017";
+const url = process.env.MONGO_URI;
 const client = new MongoClient(url);
 
 // Database Name
 const dbName = "passop";
 
-dotenv.config();
 const app = express();
 app.use(bodyparser.json());
-const port = 3000;
+const port = process.env.PORT || 3000;
 app.use(cors());
 
 client.connect();
