@@ -68,9 +68,7 @@ const Manager = () => {
             body: JSON.stringify({ id: form.id }),
           });
 
-          setPasswordArray(
-            passwordArray.map((item) => (item.id === form.id ? form : item)),
-          );
+         setPasswordArray([...passwordArray, form]);
         } else {
           form.id = uuidv4();
           setPasswordArray([...passwordArray, form]);
