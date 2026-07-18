@@ -61,7 +61,6 @@ const Manager = () => {
       form.password.length > 3
     ) {
       try {
-        // Agar pehle se id hai (yani edit mode hai), toh pehle purana delete hoga
         if (form.id) {
           await fetch(`${API_URL}/`, {
             method: "DELETE",
@@ -69,24 +68,20 @@ const Manager = () => {
             body: JSON.stringify({ id: form.id }),
           });
 
-          // Local state se bhi purana hata kar naya add karenge
           setPasswordArray(
             passwordArray.map((item) => (item.id === form.id ? form : item)),
           );
         } else {
-          // Naye password ke liye fresh ID banayein
           form.id = uuidv4();
           setPasswordArray([...passwordArray, form]);
         }
 
-        // Database mein save (POST) karein
         await fetch(`${API_URL}/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         });
 
-        // Form ko khali karein
         setform({ site: "", username: "", password: "" });
 
         toast("Password saved!", {
@@ -130,8 +125,8 @@ const Manager = () => {
     console.log("Editing password with id ", id);
     const passwordToEdit = passwordArray.find((i) => i.id === id);
     if (passwordToEdit) {
-      // Form mein data daal rahe hain bina array se foran delete kiye (taake save na karne par data loss na ho)
       setform(passwordToEdit);
+      setPasswordArray(passwordArray.filter((item) => item.id !== id));
     }
   };
 
