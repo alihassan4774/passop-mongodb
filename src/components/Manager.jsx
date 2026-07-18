@@ -11,19 +11,21 @@ const Manager = () => {
   const [form, setform] = useState({ site: "", username: "", password: "" });
   const [passwordArray, setPasswordArray] = useState([]);
 
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
   const getpassword = async () => {
-    let req = await fetch("http://localhost:3000/");
-    let password = await req.json();
-    console.log(password);
-    setPasswordArray(password);
+    try {
+      let req = await fetch(`${API_URL}/`);
+      let password = await req.json();
+      console.log(password);
+      setPasswordArray(password);
+    } catch (error) {
+      console.error("Error fetching passwords:", error);
+    }
   };
 
   useEffect(() => {
     getpassword();
-    // let passwords = localStorage.getItem("passwords");
-    // if (passwords) {
-    //     setPasswordArray(JSON.parse(passwords))
-    // }
   }, []);
 
   const copyText = (text) => {
@@ -58,37 +60,44 @@ const Manager = () => {
       form.username.length > 3 &&
       form.password.length > 3
     ) {
-      setPasswordArray([...passwordArray, { ...form, id: uuidv4() }]);
+      try {
+        // Agar pehle se id hai (yani edit mode hai), toh pehle purana delete hoga
+        if (form.id) {
+          await fetch(`${API_URL}/`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: form.id }),
+          });
 
-      await fetch("http://localhost:3000/", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: form.id }),
-      });
+          // Local state se bhi purana hata kar naya add karenge
+          setPasswordArray(
+            passwordArray.map((item) => (item.id === form.id ? form : item)),
+          );
+        } else {
+          // Naye password ke liye fresh ID banayein
+          form.id = uuidv4();
+          setPasswordArray([...passwordArray, form]);
+        }
 
-      await fetch("http://localhost:3000/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, id: uuidv4() }),
-      });
-      //   localStorage.setItem(
-      //     "passwords",
-      //     JSON.stringify([...passwordArray, { ...form, id: uuidv4() }]),
-      //   );
-      console.log([...passwordArray, form]);
+        // Database mein save (POST) karein
+        await fetch(`${API_URL}/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
 
-      setform({ site: "", username: "", password: "" });
+        // Form ko khali karein
+        setform({ site: "", username: "", password: "" });
 
-      toast("Password saved!", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
+        toast("Password saved!", {
+          position: "top-right",
+          autoClose: 5000,
+          theme: "dark",
+        });
+      } catch (error) {
+        console.error("Error saving password:", error);
+        toast("Error saving password to database");
+      }
     } else {
       toast("Error: Please Fill all Fields!");
     }
@@ -98,32 +107,32 @@ const Manager = () => {
     console.log("Deleting password with id ", id);
     let c = confirm("Do you really want to delete this password?");
     if (c) {
-      setPasswordArray(passwordArray.filter((item) => item.id !== id));
-      await fetch("http://localhost:3000/", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      //   localStorage.setItem(
-      //     "passwords",
-      //     JSON.stringify(passwordArray.filter((item) => item.id !== id)),
-      //   );
-      toast("Password Deleted!", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
+      try {
+        setPasswordArray(passwordArray.filter((item) => item.id !== id));
+        await fetch(`${API_URL}/`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+
+        toast("Password Deleted!", {
+          position: "top-right",
+          autoClose: 5000,
+          theme: "dark",
+        });
+      } catch (error) {
+        console.error("Error deleting password:", error);
+      }
     }
   };
+
   const editPassword = (id) => {
     console.log("Editing password with id ", id);
-    setform({ ...passwordArray.filter((i) => i.id === id)[0], id: id });
-    setPasswordArray(passwordArray.filter((item) => item.id !== id));
+    const passwordToEdit = passwordArray.find((i) => i.id === id);
+    if (passwordToEdit) {
+      // Form mein data daal rahe hain bina array se foran delete kiye (taake save na karne par data loss na ho)
+      setform(passwordToEdit);
+    }
   };
 
   const handleChange = (e) => {
