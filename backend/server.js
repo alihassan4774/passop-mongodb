@@ -6,46 +6,65 @@ import cors from "cors";
 
 dotenv.config();
 
-console.log(process.env.MONGO_URI);
-// Connection URL
 const url = process.env.MONGO_URI;
-const client = new MongoClient(url);
-
-// Database Name
+// Connection pooling ke liye client ko function se bahar rakhein
+const client = new MongoClient(url); 
 const dbName = "passop";
 
 const app = express();
 app.use(bodyparser.json());
-const port = process.env.PORT || 3000;
 app.use(cors());
 
-client.connect();
+// Database connection helper function
+async function connectDB() {
+  // Agar client pehle se connect nahi hai toh hi connect karein
+  await client.connect();
+  return client.db(dbName);
+}
 
-// Get the all Passwords
+// GET Route
 app.get("/", async (req, res) => {
-  const db = client.db(dbName);
-  const collection = db.collection("passwords");
-  const findResult = await collection.find({}).toArray();
-  res.json(findResult);
+  try {
+    const db = await connectDB();
+    const collection = db.collection("passwords");
+    const findResult = await collection.find({}).toArray();
+    res.json(findResult);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// Save passwords
+// POST Route
 app.post("/", async (req, res) => {
-  const password = req.body;
-  const db = client.db(dbName);
-  const collection = db.collection("passwords");
-  const findResult = await collection.insertOne(password);
-  res.send({ success: true, result: findResult });
-});
-// Delete passwords
-app.delete("/", async (req, res) => {
-  const password = req.body;
-  const db = client.db(dbName);
-  const collection = db.collection("passwords");
-  const findResult = await collection.deleteOne(password);
-  res.send({ success: true, result: findResult });
+  try {
+    const password = req.body;
+    const db = await connectDB();
+    const collection = db.collection("passwords");
+    const findResult = await collection.insertOne(password);
+    res.send({ success: true, result: findResult });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
+// DELETE Route
+app.delete("/", async (req, res) => {
+  try {
+    const password = req.body;
+    const db = await connectDB();
+    const collection = db.collection("passwords");
+    const findResult = await collection.deleteOne(password);
+    res.send({ success: true, result: findResult });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Vercel serverless ke liye app export karna zaroori hota hai
+export default app;
+
+// Local testing ke liye port listen chalega
+const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Example app listening on port http://localhost:${port}`);
 });
